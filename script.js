@@ -1,31 +1,130 @@
-const url = "https://api.openweathermap.org/data/2.5/weather";
-const apiKey = "f00c38e0279b7bc85480c3fe775d518c";
+document.addEventListener("DOMContentLoaded", function () {
+  const calculator = {
+    displayValue: "0",
+    firstOperand: null,
+    waitingForSecondOperand: false,
+    operator: null,
+  };
 
-$(document).ready(function () {
-  weatherFn("bangalore");
-});
-
-async function weatherFn(cName) {
-  const fullUrl = `${url}?q=${cName}&appid=${apiKey}&units=metric`;
-  try {
-    const res = await fetch(fullUrl);
-    const data = await res.json();
-    if (res.ok) {
-      weatherShowFn(data);
-    } else {
-      alert("City not found. Please try again.");
-    }
-  } catch (error) {
-    console.error("Error fetching weather data:", error);
+  function updateDisplay() {
+    const display = document.querySelector(".calculator-screen");
+    display.value = calculator.displayValue;
   }
-}
 
-function weatherShowFn(data) {
-  $("#city-name").text(data.name);
-  $("#date").text(moment().format("MMMM Do YYYY, h:mm:ss a"));
-  $("#temperature").html(`${data.main.temp}°C`);
-  $("#description").text(data.weather[0].description);
-  $("#wind-speed").html(`Wind Speed: ${data.wind.speed} m/s`);
-  $("#weather-icon").attr("src", `...`);
-  $("#weather-info").fadeIn();
-}
+  updateDisplay();
+
+  const keys = document.querySelector(".calculator-keys");
+  keys.addEventListener("click", (event) => {
+    const { target } = event;
+    const { value } = target;
+
+    if (!target.matches("button")) {
+      return;
+    }
+
+    switch (value) {
+      case "+":
+      case "-":
+      case "*":
+      case "/":
+        handleOperator(value);
+        break;
+      case "=":
+        handleEquals();
+        break;
+      case ".":
+        inputDecimal(value);
+        break;
+      case "all-clear":
+        resetCalculator();
+        break;
+      default:
+        if (Number.isInteger(parseFloat(value))) {
+          inputDigit(value);
+        }
+    }
+
+    updateDisplay();
+  });
+
+  function inputDigit(digit) {
+    const { displayValue, waitingForSecondOperand } = calculator;
+
+    if (waitingForSecondOperand === true) {
+      calculator.displayValue = digit;
+      calculator.waitingForSecondOperand = false;
+    } else {
+      calculator.displayValue =
+        displayValue === "0" ? digit : displayValue + digit;
+    }
+  }
+
+  function inputDecimal(dot) {
+    if (calculator.waitingForSecondOperand === true) {
+      calculator.displayValue = "0.";
+      calculator.waitingForSecondOperand = false;
+      return;
+    }
+
+    if (!calculator.displayValue.includes(dot)) {
+      calculator.displayValue += dot;
+    }
+  }
+
+  function handleOperator(nextOperator) {
+    const { firstOperand, displayValue, operator } = calculator;
+    const inputValue = parseFloat(displayValue);
+
+    if (operator && calculator.waitingForSecondOperand) {
+      calculator.operator = nextOperator;
+      return;
+    }
+
+    if (firstOperand == null && !isNaN(inputValue)) {
+      calculator.firstOperand = inputValue;
+    } else if (operator) {
+      const result = calculate(firstOperand, inputValue, operator);
+
+      calculator.displayValue = `${parseFloat(result.toFixed(7))}`;
+      calculator.firstOperand = result;
+    }
+
+    calculator.waitingForSecondOperand = true;
+    calculator.operator = nextOperator;
+  }
+
+  function calculate(firstOperand, secondOperand, operator) {
+    if (operator === "+") {
+      return firstOperand + secondOperand;
+    } else if (operator === "-") {
+      return firstOperand - secondOperand;
+    } else if (operator === "*") {
+      return firstOperand * secondOperand;
+    } else if (operator === "/") {
+      return firstOperand / secondOperand;
+    }
+
+    return secondOperand;
+  }
+
+  function handleEquals() {
+    const { firstOperand, displayValue, operator } = calculator;
+    const inputValue = parseFloat(displayValue);
+
+    if (operator && !calculator.waitingForSecondOperand) {
+      const result = calculate(firstOperand, inputValue, operator);
+
+      calculator.displayValue = `${parseFloat(result.toFixed(7))}`;
+      calculator.firstOperand = result;
+      calculator.operator = null;
+      calculator.waitingForSecondOperand = false;
+    }
+  }
+
+  function resetCalculator() {
+    calculator.displayValue = "0";
+    calculator.firstOperand = null;
+    calculator.waitingForSecondOperand = false;
+    calculator.operator = null;
+  }
+});
